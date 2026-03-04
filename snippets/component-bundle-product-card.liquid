@@ -1,0 +1,160 @@
+{%- liquid
+  assign card_product = product
+  assign card_variant = card_product.selected_or_first_available_variant
+-%}
+
+<div
+  class="bundle-product-card"
+  data-product-id="{{ card_product.id }}"
+  data-step-index="{{ step_index }}"
+  data-step-title="{{ step_title | default: 'Step' | escape }}"
+  data-block-id="{{ block_id }}"
+>
+  <div class="bundle-product-card__media">
+    {%- if card_product.featured_image != blank -%}
+      {{
+        card_product.featured_image
+        | image_url: width: 400, height: 400, crop: 'center'
+        | image_tag: loading: 'lazy', alt: card_product.featured_image.alt, class: 'bundle-product-card__image'
+      }}
+    {%- else -%}
+      {{ 'product-1' | placeholder_svg_tag: 'bundle-product-card__placeholder' }}
+    {%- endif -%}
+    {%- if card_variant.compare_at_price > card_variant.price and card_product.available -%}
+      {%- assign save_percent = card_variant.compare_at_price
+        | minus: card_variant.price
+        | times: 100
+        | divided_by: card_variant.compare_at_price
+      -%}
+      <span class="bundle-product-card__badge">Save {{ save_percent }}%</span>
+    {%- endif -%}
+  </div>
+
+  <div class="bundle-product-card__content">
+    <h3 class="bundle-product-card__title">
+      <p class="bundle-product-card__link">{{ card_product.title }}</p>
+    </h3>
+    {%- if card_product.description != blank -%}
+      <p class="bundle-product-card__description">
+        <span>{{ card_product.description | strip_html | truncate: 50 }}</span>
+        <a href="{{ card_product.url }}" class="bundle-product-card__learn-more">Learn More</a>
+      </p>
+    {%- endif -%}
+    {%- if card_product.has_only_default_variant == false -%}
+      <div class="bundle-product-card__variants">
+        {%- for option in card_product.options_with_values -%}
+          <div class="bundle-product-card__option" data-option-name="{{ option.name }}">
+            <span class="bundle-product-card__option-label">{{ option.name }}</span>
+            <div class="bundle-product-card__option-values">
+              {%- for value in option.values -%}
+                {%- assign variant_for_value = null -%}
+                {%- for v in card_product.variants -%}
+                  {%- assign opt_val = null -%}
+                  {%- if option.position == 1 -%}
+                    {%- assign opt_val = v.option1 -%}
+                  {%- elsif option.position == 2 -%}
+                    {%- assign opt_val = v.option2 -%}
+                  {%- else -%}
+                    {%- assign opt_val = v.option3 -%}
+                  {%- endif -%}
+                  {%- if opt_val == value -%}
+                    {%- assign variant_for_value = v -%}
+                    {%- break -%}
+                  {%- endif -%}
+                {%- endfor -%}
+                {%- if variant_for_value != null -%}
+                  <button
+                    type="button"
+                    class="bundle-product-card__variant-btn"
+                    data-variant-id="{{ variant_for_value.id }}"
+                    data-option-value="{{ value | escape }}"
+                    data-product-id="{{ card_product.id }}"
+                    data-price="{{ variant_for_value.price }}"
+                    data-compare-at-price="{{ variant_for_value.compare_at_price | default: 0 }}"
+                    {% if variant_for_value.id == card_variant.id %}
+                      aria-pressed="true"
+                    {% endif %}
+                  >
+                    {%- assign option_name_lower = option.name | downcase -%}
+                    {%- if option_name_lower == 'color' or option_name_lower == 'colour' -%}
+                      {%- if card_product.featured_image != blank -%}
+                        {{
+                          card_product.featured_image
+                          | image_url: width: 28, height: 28, crop: 'center'
+                          | image_tag: loading: 'lazy', alt: card_product.featured_image.alt
+                        }}
+                      {%- endif -%}
+                    {%- endif -%}
+                    <span class="bundle-product-card__variant-label">{{ value }}</span>
+                  </button>
+                {%- endif -%}
+              {%- endfor -%}
+            </div>
+          </div>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    <div class="bundle-product-card__quantity-row">
+      <div class="bundle-product-card__quantity" data-quantity-wrapper>
+        <button
+          type="button"
+          class="bundle-product-card__qty-btn decrease-btn"
+          name="minus"
+          aria-label="Decrease quantity"
+          data-product-id="{{ card_product.id }}"
+          data-variant-id="{{ card_variant.id }}"
+        >
+          <span aria-hidden="true">−</span>
+        </button>
+        <input
+          type="number"
+          class="bundle-product-card__qty-input"
+          value="0"
+          min="0"
+          max="99"
+          aria-label="Quantity"
+          data-product-id="{{ card_product.id }}"
+          data-variant-id="{{ card_variant.id }}"
+          readonly
+        >
+        <button
+          type="button"
+          class="bundle-product-card__qty-btn increase-btn"
+          name="plus"
+          aria-label="Increase quantity"
+          data-product-id="{{ card_product.id }}"
+          data-variant-id="{{ card_variant.id }}"
+        >
+          <span aria-hidden="true">+</span>
+        </button>
+      </div>
+      <div class="bundle-product-card__price" data-price-display>
+        {%- if card_variant.compare_at_price > card_variant.price -%}
+          <s class="bundle-product-card__compare-price">{{ card_variant.compare_at_price | money }}</s>
+        {%- endif -%}
+        <span class="bundle-product-card__current-price">{{ card_variant.price | money }}</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" data-product-data>
+    {
+      "id": {{ card_product.id | json }},
+      "title": {{ card_product.title | json }},
+      "url": {{ card_product.url | json }},
+      "productImage": {{ card_product.featured_image | json}},
+      "variants": [
+        {%- for v in card_product.variants -%}
+          {
+            "id": {{ v.id }},
+            "title": {{ v.title | json }},
+            "price": {{ v.price }},
+            "compare_at_price": {{ v.compare_at_price | default: 0 }},
+            "available": {{ v.available | json }}
+          }{% unless forloop.last %},{% endunless %}
+        {%- endfor -%}
+      ]
+    }
+  </script>
+</div>

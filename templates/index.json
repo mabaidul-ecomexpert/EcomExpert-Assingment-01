@@ -179,10 +179,60 @@
         "title": "Product Highlights Title",
         "description": "Product Highlights description will appear here."
       }
-    }
+    },
+    "product_bundle_main": {
+      "type": "product-bundle",
+      "blocks": {
+        "collection_step_1": {
+          "type": "collection_step",
+          "settings": {
+            "collection": "",
+            "step_title": "Choose your cameras"
+          }
+        },
+        "collection_step_2": {
+          "type": "collection_step",
+          "settings": {
+            "collection": "",
+            "step_title": "Choose your plan"
+          }
+        },
+        "collection_step_3": {
+          "type": "collection_step",
+          "settings": {
+            "collection": "",
+            "step_title": "Choose your sensors"
+          }
+        },
+        "collection_step_4": {
+          "type": "collection_step",
+          "settings": {
+            "collection": "",
+            "step_title": "Add extra protection"
+          }
+        }
+      },
+      "block_order": [
+        "collection_step_1",
+        "collection_step_2",
+        "collection_step_3",
+        "collection_step_4"
+      ],
+      "settings": {
+        "heading": "Build Your Bundle",
+        "subheading": "Customize your selection step by step",
+        "review_heading": "Your security system",
+        "review_subheading": "Review your personalized protection system designed to keep what matters most safe.",
+        "checkout_text": "Checkout",
+        "save_later_text": "Save my system for later",
+        "padding_top": 60,
+        "padding_bottom": 60
+      }
+    },
   },
   "order": [
     "hero_1",
+    "product_bundle_main",
     "featured_collections_hhETJ9",
     "selling_points_v2_6NgzaK",
     "product_highlights_gUaG6E"
