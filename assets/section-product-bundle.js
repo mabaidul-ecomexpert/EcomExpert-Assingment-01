@@ -1,4 +1,3 @@
-
 if (!customElements.get('product-bundle')) {
   class ProductBundle extends HTMLElement {
     constructor() {
@@ -15,10 +14,63 @@ if (!customElements.get('product-bundle')) {
       this.setupVariantListeners();
       this.setupReviewListeners();
       this.setupNextStepLinks();
+      this.restoreStateFromStorage();
     }
     
     disconnectedCallback() {
       this.selectedItems.clear();
+    }
+
+    getStorageKey() {
+      const base = 'product-bundle-selected-items';
+      const bundleId = this.dataset?.bundleId || this.id || this.getAttribute('data-section-id') ;
+      return bundleId ? `${base}:${bundleId}` : base;
+    }
+
+    saveSelectedItemsToStorage() {
+      if(typeof window === 'undefined' || !window.localStorage) return;
+      try {
+        const entries = Array.from(this.selectedItems.entries());
+        window.localStorage.setItem(this.getStorageKey(), JSON.stringify(entries));
+      } catch (error) {
+        console.error('Failed to save product bundle selections to localStorage', error);
+      }
+    } 
+
+    loadSelectedItemsFromStorage() {
+      if(typeof window === 'undefined' || !window.localStorage) return;
+      try {
+        const rawItems = window.localStorage.getItem(this.getStorageKey());
+        if(!rawItems) return;
+        const entries = JSON.parse(rawItems);
+        if(!Array.isArray(entries)) return;
+        this.selectedItems = new Map(entries);
+      } catch (error) {
+        console.log('Failed to load product from localStorage', error)
+      }
+    }
+
+    restoreStateFromStorage( ){
+      this.loadSelectedItemsFromStorage();
+
+      if(!this.selectedItems || this.selectedItems.size === 0) {
+        this.renderReview();
+        this.updateStepCounts();
+        this.updateCardSelectionStates();
+        return;
+      } 
+
+      for (const item of this.selectedItems.values()) {
+        const card = this.findProductCard(item.productId, item.variantId);
+        if(card) {
+          this.setCardActiveVariant(card, item.variantId);
+        }
+      }
+
+      this.syncAllQuantityInputsByValue();
+      this.updateCardSelectionStates();
+      this.renderReview();
+      this.updateStepCounts();
     }
 
     loadConfig() {
@@ -95,9 +147,9 @@ if (!customElements.get('product-bundle')) {
 
         let html = '';
         if(compareAt > price) {
-          html += `<s class="bundle-product-card__compare-price">${this.formatMoney(compareAt)}</s>`;
+          html += `<span class="bundle-product-card__compare-price">${this.formatMoney(compareAt)}</span>`;
         }
-        html += `<s class="bundle-product-card__current-price">${this.formatMoney(price)}</s>`;
+        html += `<span class="bundle-product-card__current-price">${this.formatMoney(price)}</span>`;
         priceDisplay.innerHTML = html;
       }
 
@@ -259,6 +311,7 @@ if (!customElements.get('product-bundle')) {
       this.updateCardSelectionStates();
       this.renderReview();
       this.updateStepCounts();
+      this.saveSelectedItemsToStorage();
       requestAnimationFrame(() => {
         this.syncAllQuantityInputsByValue();
         this.updateCardSelectionStates();
