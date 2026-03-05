@@ -44,7 +44,6 @@
       <div class="bundle-product-card__variants">
         {%- for option in card_product.options_with_values -%}
           <div class="bundle-product-card__option" data-option-name="{{ option.name }}">
-            <span class="bundle-product-card__option-label">{{ option.name }}</span>
             <div class="bundle-product-card__option-values">
               {%- for value in option.values -%}
                 {%- assign variant_for_value = null -%}
@@ -80,7 +79,7 @@
                       {%- if card_product.featured_image != blank -%}
                         {{
                           card_product.featured_image
-                          | image_url: width: 28, height: 28, crop: 'center'
+                          | image_url: width: 22, height: 22, crop: 'center'
                           | image_tag: loading: 'lazy', alt: card_product.featured_image.alt
                         }}
                       {%- endif -%}

@@ -70,13 +70,59 @@ if (!customElements.get('product-bundle')) {
       return total;
     }
 
+    getVariantQuantity(productId, variantId) {
+      const key = `${productId}-${variantId}`;
+      const item = this.selectedItems.get(key);
+      return item?.quantity ?? 0;
+    }
+
+    setCardActiveVariant(card, variantId) {
+      if(!card || !variantId) return;
+
+      const optionBtns = card.querySelectorAll('.bundle-product-card__variant-btn');
+      const priceDisplay = card.querySelector('[data-price-display]');
+      const qtyInput = card.querySelector('.bundle-product-card__qty-input');
+
+      optionBtns?.forEach((b) => 
+        b.setAttribute('aria-pressed', b.dataset.variantId === String(variantId) ? 'true' : 'false')
+      )
+
+      const activeBtn = card.querySelector(`.bundle-product-card__variant-btn[data-variant-id="${variantId}"]`);
+
+      if(activeBtn && priceDisplay) {
+        const price = parseInt(activeBtn.dataset.price, 10);
+        const compareAt = parseInt(activeBtn.dataset.compareAtPrice, 10);
+
+        let html = '';
+        if(compareAt > price) {
+          html += `<s class="bundle-product-card__compare-price">${this.formatMoney(compareAt)}</s>`;
+        }
+        html += `<s class="bundle-product-card__current-price">${this.formatMoney(price)}</s>`;
+        priceDisplay.innerHTML = html;
+      }
+
+      if(qtyInput) {
+        const productId = qtyInput.dataset.productId;
+        const qty = productId && variantId ? this.getVariantQuantity(productId, variantId) : 0;
+        const qtyStr = String(qty);
+        qtyInput.value = qtyStr;
+        qtyInput.setAttribute('value', qtyStr);
+        qtyInput.setAttribute('data-variant-id', variantId);
+      }
+
+      this.updateCardSelectionStates();
+    }
+
     updateCardSelectionStates() {
       this.querySelectorAll('.bundle-product-card').forEach((card) => {
         const productId = card.dataset.productId;
-        const totalQty = productId ? this.getTotalProductQuantity(productId) : 0;
-        const selected = totalQty > 0;
+        const qtyInput = card.querySelector('.bundle-product-card__qty-input');
+        const activeVariantId = qtyInput?.dataset.variantId ?? null;
+        const variantQty = productId && activeVariantId ? this.getVariantQuantity(productId, activeVariantId) : 0;
+
+        const selected = variantQty > 0;
         card.setAttribute('data-selected', selected ? 'true' : 'false');
-        card.setAttribute('data-total-qty', String(totalQty));
+        card.setAttribute('data-total-qty', String(variantQty));
       });
     }
 
@@ -123,42 +169,24 @@ if (!customElements.get('product-bundle')) {
         const currentVariantId = input?.dataset.variantId;
         if (!input | !productId | !currentVariantId) return;
 
-        let targetVariantId = currentVariantId;
-        let targetQty = 0;
+        const key = `${productId}-${currentVariantId}`;
+        const existingItem = this.selectedItems.get(key);
+        const existingQty = existingItem?.quantity ?? 0;
+        let targetQty = existingQty;
+
 
         if (btn.name === 'plus') {
-          const key = `${productId}-${currentVariantId}`;
-          const existingItem = this.selectedItems.get(key);
-          const existingQty = existingItem?.quantity ?? 0;
           targetQty = Math.min(99, existingQty + 1);
         } else if (btn.name === 'minus') {
-          const currentKey = `${productId}-${currentVariantId}`;
-          const currentItem = this.selectedItems.get(currentKey);
-
-          if(currentItem && currentItem.quantity > 0 ) {
-            targetQty = Math.max(0, currentItem.quantity - 1);
-            targetVariantId = currentVariantId;
-          } else {
-            const productEntries = Array.from(this.selectedItems.entries()).filter(
-              ([, item]) => String(item.productId) === String(productId)
-            );
-
-            if(productEntries.length === 0) {
-              targetQty = 0;
-              targetVariantId = currentVariantId;
-            } else {
-              const [, fallbackItem] = productEntries[productEntries.length -1];
-              targetVariantId = fallbackItem.variantId;
-              targetQty = Math.max(0, fallbackItem.quantity - 1);
-            }
-          }
+          targetQty = Math.max(0, existingQty - 1);
         }
 
-        this.updateItemQuantity(productId, targetVariantId, targetQty, card);
+        this.updateItemQuantity(productId, currentVariantId, targetQty, card);
 
-        const totalQty = this.getTotalProductQuantity(productId);
-        input.value = String(totalQty);
-        input.setAttribute('value', String(totalQty));
+        const currentQty = this.getVariantQuantity(productId, currentVariantId);
+        input.value = String(currentQty);
+        input.setAttribute('value', String(currentQty));
+        input.setAttribute('data-variant-id', currentVariantId);
       });
 
       this.addEventListener('change', (e) => {
@@ -180,34 +208,10 @@ if (!customElements.get('product-bundle')) {
         const btn = e.target.closest('.bundle-product-card__variant-btn');
         if (!btn) return;
 
-        const productId = btn.dataset.productId;
         const variantId = btn.dataset.variantId;
         const card = btn.closest('.bundle-product-card');
-        const priceDisplay = card?.querySelector('[data-price-display]');
-        const qtyInput = card?.querySelector('.bundle-product-card__qty-input');
-        const optionBtns = card?.querySelectorAll('.bundle-product-card__variant-btn');
 
-        optionBtns?.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
-
-        const price = parseInt(btn.dataset.price, 10);
-        const compareAt = parseInt(btn.dataset.compareAtPrice, 10) || 0;
-
-        if (priceDisplay) {
-          let html = '';
-          if (compareAt > price) {
-            html += `<s class="bundle-product-card__compare-price">${this.formatMoney(compareAt)}</s> `;
-          }
-          html += `<span class="bundle-product-card__current-price">${this.formatMoney(price)}</span>`;
-          priceDisplay.innerHTML = html;
-        }
-
-        if(qtyInput && productId && variantId) {
-          const totalQty = this.getTotalProductQuantity(productId);
-          qtyInput.value = String(totalQty);
-          qtyInput.setAttribute('value', String(totalQty));
-          qtyInput?.setAttribute('data-variant-id', variantId);
-        }
-        
+        this.setCardActiveVariant(card, variantId);
       });
     }
 
@@ -262,15 +266,17 @@ if (!customElements.get('product-bundle')) {
     }
 
     syncAllQuantityInputs(productId) {
-      const totalQty = this.getTotalProductQuantity(productId);
       const inputs = this.querySelectorAll(
         `.bundle-product-card__qty-input[data-product-id="${productId}"]`
       );
-      const qtyStr = String(totalQty);
       inputs.forEach((input) => {
-        const current = parseInt(input.value, 10) || 0;
-        if (current !== qtyStr) {
+        const variantId = input.dataset.variantId;
+        const qty = variantId ? this.getVariantQuantity(productId, variantId) : 0;
+        const qtyStr = String(qty);
+        if(input.value !== qtyStr) {
           input.value = qtyStr;
+        }
+        if(input.getAttribute('value') !== qtyStr) {
           input.setAttribute('value', qtyStr);
         }
       });
@@ -309,6 +315,7 @@ if (!customElements.get('product-bundle')) {
             input.setAttribute('value', String(newQty));
             input.setAttribute('data-variant-id', variantId);
           }
+          this.setCardActiveVariant(card, variantId);
         }
         this.updateItemQuantity(productId, variantId, newQty, card);
       });
@@ -331,6 +338,7 @@ if (!customElements.get('product-bundle')) {
             input.setAttribute('value', String(newQty));
             input.setAttribute('data-variant-id', variantId);
           }
+          this.setCardActiveVariant(card, variantId);
         }
         this.updateItemQuantity(productId, variantId, newQty, card);
       });
